@@ -1,0 +1,83 @@
+import i18n from 'i18next';
+import { initReactI18next } from 'react-i18next';
+
+// Русский и кыргызский по ТЗ. Строки — в ресурсах, без хардкода.
+const resources = {
+  ru: {
+    translation: {
+      tickets: 'Билеты',
+      bar: 'Бар',
+      booking: 'Бронь',
+      return: 'Возврат',
+      shiftReport: 'Отчёт смены',
+      shiftOpen: 'Смена открыта',
+      order: 'Заказ',
+      ticketsCount: '{{count}} билета',
+      nextCategory: 'Категория следующего билета:',
+      adult: 'Взрослый',
+      child: 'Детский',
+      concession: 'Льготн.',
+      total: 'Итого',
+      cash: 'Наличные',
+      card: 'Карта',
+      payAndPrint: 'Оплатить и напечатать',
+      clearOrder: 'Очистить заказ',
+      free: 'Свободно',
+      sold: 'Занято',
+      booked: 'Забронировано',
+      selected: 'Выбрано',
+      screen: 'Э К Р А Н',
+      row: 'Ряд',
+      seat: 'Место',
+      som: 'сом',
+      realtime: 'В реальном времени',
+      total_seats: 'Всего',
+      nextSession: 'След.',
+      inStock: 'Остаток',
+      emptyCart: 'Чек пуст',
+    },
+  },
+  ky: {
+    translation: {
+      tickets: 'Билеттер',
+      bar: 'Бар',
+      booking: 'Брондоо',
+      return: 'Кайтаруу',
+      shiftReport: 'Алмашуу отчёту',
+      shiftOpen: 'Алмашуу ачык',
+      order: 'Буйрутма',
+      ticketsCount: '{{count}} билет',
+      nextCategory: 'Кийинки билеттин категориясы:',
+      adult: 'Чоңдор',
+      child: 'Балдар',
+      concession: 'Жеңилд.',
+      total: 'Жыйынтык',
+      cash: 'Накталай',
+      card: 'Карта',
+      payAndPrint: 'Төлөп басып чыгаруу',
+      clearOrder: 'Буйрутманы тазалоо',
+      free: 'Бош',
+      sold: 'Бош эмес',
+      booked: 'Брондолгон',
+      selected: 'Тандалды',
+      screen: 'Э К Р А Н',
+      row: 'Катар',
+      seat: 'Орун',
+      som: 'сом',
+      realtime: 'Реалдуу убакытта',
+      total_seats: 'Бардыгы',
+      nextSession: 'Кийинки',
+      inStock: 'Калдык',
+      emptyCart: 'Чек бош',
+    },
+  },
+};
+
+i18n.use(initReactI18next).init({
+  resources,
+  lng: 'ru',
+  fallbackLng: 'ru',
+  interpolation: { escapeValue: false },
+});
+
+export default i18n;

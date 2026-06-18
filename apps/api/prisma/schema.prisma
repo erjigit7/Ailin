@@ -1,0 +1,336 @@
+// Prisma schema — система автоматизации кинотеатра «Ailin»
+// БД: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────── Пользователи и смены ─────────────────────────
+
+enum UserRole {
+  ADMIN
+  CASHIER
+}
+
+model User {
+  id        String   @id @default(cuid())
+  login     String   @unique
+  password  String // bcrypt hash
+  fullName  String
+  role      UserRole @default(CASHIER)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  shifts   Shift[]
+  orders   Order[]
+  returns  Return[]
+  movements InventoryMovement[]
+
+  @@map("users")
+}
+
+model Shift {
+  id           String    @id @default(cuid())
+  cashier      User      @relation(fields: [cashierId], references: [id])
+  cashierId    String
+  openedAt     DateTime  @default(now())
+  closedAt     DateTime?
+  // Стартовая сумма в кассе и фактическая при закрытии — для контроля расхождений
+  startCash    Decimal   @db.Decimal(12, 2)
+  endCashFact  Decimal?  @db.Decimal(12, 2)
+  // Расчётная сумма (стартовая + продажи нал − возвраты нал) фиксируется при закрытии
+  endCashCalc  Decimal?  @db.Decimal(12, 2)
+  note         String?
+
+  orders  Order[]
+  returns Return[]
+
+  @@index([cashierId])
+  @@map("shifts")
+}
+
+// ───────────────────────── Зал и места ─────────────────────────
+
+model Hall {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  seats    Seat[]
+  sessions Session[]
+
+  @@map("halls")
+}
+
+enum SeatBlock {
+  LEFT
+  RIGHT
+}
+
+model Seat {
+  id     String    @id @default(cuid())
+  hall   Hall      @relation(fields: [hallId], references: [id], onDelete: Cascade)
+  hallId String
+  row    Int
+  number Int
+  block  SeatBlock
+
+  tickets  Ticket[]
+  bookings Booking[]
+
+  @@unique([hallId, row, number])
+  @@index([hallId])
+  @@map("seats")
+}
+
+// ───────────────────────── Фильмы и сеансы ─────────────────────────
+
+enum MovieFormat {
+  TWO_D  @map("2D")
+  THREE_D @map("3D")
+}
+
+model Movie {
+  id          String      @id @default(cuid())
+  title       String
+  description String?
+  posterUrl   String?
+  durationMin Int
+  ageRating   String? // напр. "16+"
+  genre       String?
+  language    String?
+  format      MovieFormat @default(TWO_D)
+  active      Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+
+  sessions Session[]
+
+  @@map("movies")
+}
+
+enum SessionStatus {
+  SCHEDULED
+  CANCELLED
+}
+
+model Session {
+  id        String        @id @default(cuid())
+  movie     Movie         @relation(fields: [movieId], references: [id])
+  movieId   String
+  hall      Hall          @relation(fields: [hallId], references: [id])
+  hallId    String
+  startsAt  DateTime
+  basePrice Decimal       @db.Decimal(12, 2)
+  status    SessionStatus @default(SCHEDULED)
+  createdAt DateTime      @default(now())
+
+  // Цены по категориям для этого сеанса
+  prices   SessionPrice[]
+  tickets  Ticket[]
+  bookings Booking[]
+
+  @@index([startsAt])
+  @@index([movieId])
+  @@map("sessions")
+}
+
+// ───────────────────────── Категории и цены билетов ─────────────────────────
+
+model TicketCategory {
+  id        String   @id @default(cuid())
+  code      String   @unique // ADULT / CHILD / CONCESSION / ...
+  name      String // отображаемое имя (взрослый/детский/льготный)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  sessionPrices SessionPrice[]
+  tickets       Ticket[]
+
+  @@map("ticket_categories")
+}
+
+// Цена конкретной категории на конкретном сеансе.
+model SessionPrice {
+  id         String         @id @default(cuid())
+  session    Session        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId  String
+  category   TicketCategory @relation(fields: [categoryId], references: [id])
+  categoryId String
+  price      Decimal        @db.Decimal(12, 2)
+
+  @@unique([sessionId, categoryId])
+  @@map("session_prices")
+}
+
+// ───────────────────────── Бронирование ─────────────────────────
+
+model Booking {
+  id           String   @id @default(cuid())
+  session      Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId    String
+  seat         Seat     @relation(fields: [seatId], references: [id])
+  seatId       String
+  customerName String?
+  customerPhone String?
+  createdAt    DateTime @default(now())
+  // Авто-сброс брони: момент, после которого бронь считается истёкшей
+  expiresAt    DateTime
+  released     Boolean  @default(false)
+
+  // Активную бронь (released=false) на место в сеансе блокирует частичный
+  // уникальный индекс, добавляемый raw-SQL миграцией (Prisma не выражает
+  // partial unique index в схеме). См. prisma/migrations + README.
+  @@index([sessionId])
+  @@index([sessionId, seatId])
+  @@map("bookings")
+}
+
+// ───────────────────────── Заказы, билеты, чеки ─────────────────────────
+
+enum PaymentMethod {
+  CASH
+  CARD
+  QR
+}
+
+// Заказ = один чек. Может содержать билеты и/или товары бара (объединение по ТЗ).
+model Order {
+  id            String        @id @default(cuid())
+  number        Int           @unique @default(autoincrement()) // номер чека
+  shift         Shift         @relation(fields: [shiftId], references: [id])
+  shiftId       String
+  cashier       User          @relation(fields: [cashierId], references: [id])
+  cashierId     String
+  paymentMethod PaymentMethod
+  total         Decimal       @db.Decimal(12, 2)
+  createdAt     DateTime      @default(now())
+
+  tickets   Ticket[]
+  barItems  OrderBarItem[]
+  returns   Return[]
+
+  @@index([shiftId])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+model Ticket {
+  id         String         @id @default(cuid())
+  order      Order          @relation(fields: [orderId], references: [id])
+  orderId    String
+  session    Session        @relation(fields: [sessionId], references: [id])
+  sessionId  String
+  seat       Seat           @relation(fields: [seatId], references: [id])
+  seatId     String
+  category   TicketCategory @relation(fields: [categoryId], references: [id])
+  categoryId String
+  price      Decimal        @db.Decimal(12, 2)
+  qrCode     String         @unique // для печати и проверки на входе
+  returned   Boolean        @default(false)
+  createdAt  DateTime       @default(now())
+
+  return Return?
+
+  // Источник истины против двойной продажи: непогашенный билет (returned=false)
+  // на место в сеансе должен быть единственным. Это частичный уникальный индекс
+  // (WHERE returned = false), который Prisma не умеет выражать в схеме —
+  // он добавляется raw-SQL миграцией. Обычный индекс ниже — для выборок.
+  @@index([sessionId, seatId])
+  @@index([orderId])
+  @@map("tickets")
+}
+
+// Возврат билета
+model Return {
+  id        String   @id @default(cuid())
+  ticket    Ticket   @relation(fields: [ticketId], references: [id])
+  ticketId  String   @unique
+  order     Order    @relation(fields: [orderId], references: [id])
+  orderId   String
+  shift     Shift    @relation(fields: [shiftId], references: [id])
+  shiftId   String
+  cashier   User     @relation(fields: [cashierId], references: [id])
+  cashierId String
+  reason    String
+  amount    Decimal  @db.Decimal(12, 2)
+  createdAt DateTime @default(now())
+
+  @@map("returns")
+}
+
+// ───────────────────────── Бар: товары и склад ─────────────────────────
+
+model BarCategory {
+  id        String   @id @default(cuid())
+  name      String // попкорн, напитки, снеки, кофе, прочее
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+
+  products BarProduct[]
+
+  @@map("bar_categories")
+}
+
+model BarProduct {
+  id            String      @id @default(cuid())
+  category      BarCategory @relation(fields: [categoryId], references: [id])
+  categoryId    String
+  name          String
+  photoUrl      String?
+  salePrice     Decimal     @db.Decimal(12, 2)
+  purchasePrice Decimal     @db.Decimal(12, 2)
+  unit          String      @default("шт") // единица измерения
+  stock         Decimal     @db.Decimal(12, 3) @default(0) // текущий остаток
+  lowStockThreshold Decimal? @db.Decimal(12, 3) // порог уведомления
+  active        Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+
+  movements InventoryMovement[]
+  orderItems OrderBarItem[]
+
+  @@index([categoryId])
+  @@map("bar_products")
+}
+
+enum InventoryMovementType {
+  PURCHASE // приход
+  WRITE_OFF // списание (порча, бой, личное потребление)
+  SALE // продажа
+}
+
+model InventoryMovement {
+  id        String                @id @default(cuid())
+  product   BarProduct            @relation(fields: [productId], references: [id])
+  productId String
+  type      InventoryMovementType
+  quantity  Decimal               @db.Decimal(12, 3) // + приход / − списание-продажа (храним знак по типу)
+  unitPrice Decimal?              @db.Decimal(12, 2) // цена закупки для PURCHASE
+  reason    String? // причина для WRITE_OFF
+  user      User?                 @relation(fields: [userId], references: [id])
+  userId    String?
+  createdAt DateTime              @default(now())
+
+  @@index([productId])
+  @@index([type])
+  @@map("inventory_movements")
+}
+
+// Позиция бара в чеке
+model OrderBarItem {
+  id        String     @id @default(cuid())
+  order     Order      @relation(fields: [orderId], references: [id])
+  orderId   String
+  product   BarProduct @relation(fields: [productId], references: [id])
+  productId String
+  quantity  Decimal    @db.Decimal(12, 3)
+  price     Decimal    @db.Decimal(12, 2) // цена продажи на момент чека
+  createdAt DateTime   @default(now())
+
+  @@index([orderId])
+  @@map("order_bar_items")
+}
