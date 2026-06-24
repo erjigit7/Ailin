@@ -18,6 +18,9 @@ export default function AdminLayout() {
         <NavLink to="/admin/bar" className={linkClass}>
           Бар
         </NavLink>
+        <NavLink to="/admin/trampoline" className={linkClass}>
+          Батут
+        </NavLink>
         <NavLink to="/admin/reports" className={linkClass}>
           Отчёты
         </NavLink>

@@ -210,9 +210,10 @@ model Order {
   total         Decimal       @db.Decimal(12, 2)
   createdAt     DateTime      @default(now())
 
-  tickets   Ticket[]
-  barItems  OrderBarItem[]
-  returns   Return[]
+  tickets         Ticket[]
+  barItems        OrderBarItem[]
+  trampolineItems OrderTrampolineItem[]
+  returns         Return[]
 
   @@index([shiftId])
   @@index([createdAt])
@@ -333,4 +334,37 @@ model OrderBarItem {
 
   @@index([orderId])
   @@map("order_bar_items")
+}
+
+// ───────────────────────── Батут ─────────────────────────
+
+// Тариф батута: возрастная категория + цена. Настраивается администратором,
+// можно несколько категорий (напр. «До 5 лет», «5–12 лет», «Взрослый»).
+model TrampolineTariff {
+  id          String   @id @default(cuid())
+  name        String // отображаемое название / возраст
+  price       Decimal  @db.Decimal(12, 2)
+  durationMin Int? // длительность сеанса батута, мин (опционально)
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  orderItems OrderTrampolineItem[]
+
+  @@map("trampoline_tariffs")
+}
+
+// Позиция батута в чеке
+model OrderTrampolineItem {
+  id        String           @id @default(cuid())
+  order     Order            @relation(fields: [orderId], references: [id])
+  orderId   String
+  tariff    TrampolineTariff @relation(fields: [tariffId], references: [id])
+  tariffId  String
+  quantity  Int
+  price     Decimal          @db.Decimal(12, 2) // цена на момент чека
+  createdAt DateTime         @default(now())
+
+  @@index([orderId])
+  @@map("order_trampoline_items")
 }

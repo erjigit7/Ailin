@@ -86,10 +86,17 @@ if ($needBuild) {
 # 5) Миграции БД (применяем схему; при первом запуске - индексы и начальные данные)
 Say 'Готовлю базу данных...'
 cmd /c "npm run prisma:deploy --workspace @ailin/api"
+if ($LASTEXITCODE -ne 0) { Die 'Не удалось применить схему БД. Проверьте подключение в apps/api/.env (пользователь/пароль/база).' }
 if (-not (Test-Path '.ailin-installed')) {
   cmd /c "npm run db:indexes --workspace @ailin/api"
   cmd /c "npm run db:seed --workspace @ailin/api"
-  New-Item -ItemType File '.ailin-installed' -Force | Out-Null
+  # Отмечаем установку завершённой ТОЛЬКО если сиды реально загрузились,
+  # иначе при следующем запуске попробуем снова (а не пропустим пользователей).
+  if ($LASTEXITCODE -eq 0) {
+    New-Item -ItemType File '.ailin-installed' -Force | Out-Null
+  } else {
+    Warn 'Начальные данные не загрузились — повторю при следующем запуске.'
+  }
 }
 
 # 6) Запуск сервера (он же отдаёт интерфейс) и открытие браузера

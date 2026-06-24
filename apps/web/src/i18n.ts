@@ -7,6 +7,7 @@ const resources = {
     translation: {
       tickets: 'Билеты',
       bar: 'Бар',
+      trampoline: 'Батут',
       booking: 'Бронь',
       return: 'Возврат',
       shiftReport: 'Отчёт смены',
@@ -41,6 +42,7 @@ const resources = {
     translation: {
       tickets: 'Билеттер',
       bar: 'Бар',
+      trampoline: 'Батут',
       booking: 'Брондоо',
       return: 'Кайтаруу',
       shiftReport: 'Алмашуу отчёту',

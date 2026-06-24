@@ -13,6 +13,7 @@ import { BarModule } from './bar/bar.module';
 import { ReportsModule } from './reports/reports.module';
 import { ShiftsModule } from './shifts/shifts.module';
 import { BookingsModule } from './bookings/bookings.module';
+import { TrampolineModule } from './trampoline/trampoline.module';
 
 // Прод-режим: API отдаёт собранный фронт (apps/web/dist) с тем же origin.
 // В dev папки нет — модуль не подключается, фронт обслуживает Vite.
@@ -40,6 +41,7 @@ const serveWeb = existsSync(join(WEB_DIST, 'index.html'))
     ReportsModule,
     ShiftsModule,
     BookingsModule,
+    TrampolineModule,
   ],
 })
 export class AppModule {}

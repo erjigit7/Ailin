@@ -108,3 +108,27 @@ export async function printTicketReceipts(tickets: TicketReceipt[]) {
 export function printBarReceipt(items: BarReceiptItem[], total: number) {
   printHtml(barHtml(items, total));
 }
+
+function trampolineHtml(items: BarReceiptItem[], total: number) {
+  return `
+  <div class="r">
+    <div class="center big">${CINEMA_NAME}</div>
+    <div class="center sm">БАТУТ · ЧЕК</div>
+    <hr/>
+    ${items
+      .map(
+        (i) =>
+          `<div class="row"><span>${i.name} x${i.qty}</span><span>${i.price * i.qty} сом</span></div>`,
+      )
+      .join('')}
+    <hr/>
+    <div class="row big"><span>ИТОГО</span><span>${total} сом</span></div>
+    <div class="center sm">${fmtDateTime(new Date().toISOString())}</div>
+    <div class="center sm">Спасибо за покупку!</div>
+  </div>`;
+}
+
+/** Печать чека батута. */
+export function printTrampolineReceipt(items: BarReceiptItem[], total: number) {
+  printHtml(trampolineHtml(items, total));
+}

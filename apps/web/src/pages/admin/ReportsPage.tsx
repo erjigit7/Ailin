@@ -46,9 +46,10 @@ export default function ReportsPage() {
       {/* Выручка */}
       <section className="mb-8">
         <h2 className="text-sm uppercase tracking-wider text-gray-400 mb-3">Выручка</h2>
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-5 gap-4">
           <Card label="Билеты" value={revenue.data?.tickets} />
           <Card label="Бар" value={revenue.data?.bar} />
+          <Card label="Батут" value={revenue.data?.trampoline} />
           <Card label="Итого" value={revenue.data?.total} accent />
           <Card label="Чеков" value={revenue.data?.ordersCount} plain />
         </div>

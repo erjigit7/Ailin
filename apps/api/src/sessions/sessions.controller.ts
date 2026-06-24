@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { SessionsService } from './sessions.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard, Roles } from '../auth/roles.guard';
@@ -37,6 +37,13 @@ export class SessionsController {
     },
   ) {
     return this.sessions.create(dto);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Put(':id/prices')
+  updatePrices(@Param('id') id: string, @Body() dto: { prices: { categoryId: string; price: number }[] }) {
+    return this.sessions.updatePrices(id, dto.prices ?? []);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

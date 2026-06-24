@@ -14,6 +14,7 @@ import MoviesPage from './pages/admin/MoviesPage';
 import SchedulePage from './pages/admin/SchedulePage';
 import ReportsPage from './pages/admin/ReportsPage';
 import BarAdminPage from './pages/admin/BarAdminPage';
+import TrampolineAdminPage from './pages/admin/TrampolineAdminPage';
 
 const queryClient = new QueryClient();
 
@@ -51,6 +52,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               <Route path="schedule" element={<SchedulePage />} />
               <Route path="movies" element={<MoviesPage />} />
               <Route path="bar" element={<BarAdminPage />} />
+              <Route path="trampoline" element={<TrampolineAdminPage />} />
               <Route path="reports" element={<ReportsPage />} />
             </Route>
           </Routes>

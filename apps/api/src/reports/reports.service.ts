@@ -38,17 +38,26 @@ export class ReportsService {
   async revenue(from?: string, to?: string) {
     const orders = await this.prisma.order.findMany({
       where: this.periodWhere(from, to),
-      include: { tickets: true, barItems: true },
+      include: { tickets: true, barItems: true, trampolineItems: true },
     });
     let tickets = 0;
     let bar = 0;
+    let trampoline = 0;
     const byPayment: Record<string, number> = {};
     for (const o of orders) {
       tickets += o.tickets.reduce((s, x) => s + Number(x.price), 0);
       bar += o.barItems.reduce((s, x) => s + Number(x.price) * Number(x.quantity), 0);
+      trampoline += o.trampolineItems.reduce((s, x) => s + Number(x.price) * Number(x.quantity), 0);
       byPayment[o.paymentMethod] = (byPayment[o.paymentMethod] || 0) + Number(o.total);
     }
-    return { tickets, bar, total: tickets + bar, byPayment, ordersCount: orders.length };
+    return {
+      tickets,
+      bar,
+      trampoline,
+      total: tickets + bar + trampoline,
+      byPayment,
+      ordersCount: orders.length,
+    };
   }
 
   async shift(id: string) {
@@ -126,6 +135,7 @@ export class ReportsService {
     ];
     rev.addRow({ k: 'Билеты', v: revenue.tickets });
     rev.addRow({ k: 'Бар', v: revenue.bar });
+    rev.addRow({ k: 'Батут', v: revenue.trampoline });
     rev.addRow({ k: 'Итого', v: revenue.total });
     rev.addRow({ k: 'Чеков', v: revenue.ordersCount });
     Object.entries(revenue.byPayment).forEach(([k, v]) =>
@@ -179,6 +189,7 @@ export class ReportsService {
               [{ text: 'Показатель', bold: true }, { text: 'Сумма, сом', bold: true }],
               ['Билеты', String(revenue.tickets)],
               ['Бар', String(revenue.bar)],
+              ['Батут', String(revenue.trampoline)],
               [{ text: 'Итого', bold: true }, { text: String(revenue.total), bold: true }],
               ['Чеков', String(revenue.ordersCount)],
               ...Object.entries(revenue.byPayment).map(([k, v]) => [`Оплата: ${k}`, String(v)]),

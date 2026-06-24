@@ -152,6 +152,27 @@ export const findTicket = (params: {
 export const returnTicket = (payload: { ticketId: string; reason: string }) =>
   api.post('/tickets/return', payload).then((r) => r.data);
 
+// ─── Батут ───
+export interface TrampolineTariff {
+  id: string;
+  name: string;
+  price: string;
+  durationMin?: number | null;
+  sortOrder: number;
+}
+export const getTrampolineTariffs = () =>
+  api.get<TrampolineTariff[]>('/trampoline/tariffs').then((r) => r.data);
+export const trampolineSell = (payload: {
+  paymentMethod: 'CASH' | 'CARD' | 'QR';
+  items: { tariffId: string; quantity: number }[];
+}) => api.post('/trampoline/sell', payload).then((r) => r.data);
+export const createTrampolineTariff = (data: any) =>
+  api.post('/trampoline/tariffs', data).then((r) => r.data);
+export const updateTrampolineTariff = (id: string, data: any) =>
+  api.put(`/trampoline/tariffs/${id}`, data).then((r) => r.data);
+export const deleteTrampolineTariff = (id: string) =>
+  api.delete(`/trampoline/tariffs/${id}`).then((r) => r.data);
+
 // ─── Бронирование ───
 export interface Booking {
   id: string;
@@ -224,10 +245,14 @@ export const createSession = (data: {
 export const cancelSession = (id: string) =>
   api.post(`/sessions/${id}/cancel`, {}).then((r) => r.data);
 
+export const updateSessionPrices = (id: string, prices: { categoryId: string; price: number }[]) =>
+  api.put(`/sessions/${id}/prices`, { prices }).then((r) => r.data);
+
 // ─── Админка: отчёты ───
 export interface Revenue {
   tickets: number;
   bar: number;
+  trampoline: number;
   total: number;
   byPayment: Record<string, number>;
   ordersCount: number;

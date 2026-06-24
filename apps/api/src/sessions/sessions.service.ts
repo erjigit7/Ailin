@@ -61,6 +61,20 @@ export class SessionsService {
     return session;
   }
 
+  /** Установить/изменить цены по категориям для сеанса. */
+  async updatePrices(id: string, prices: { categoryId: string; price: number }[]) {
+    const session = await this.prisma.session.findUnique({ where: { id } });
+    if (!session) throw new NotFoundException('Сеанс не найден');
+    for (const p of prices) {
+      await this.prisma.sessionPrice.upsert({
+        where: { sessionId_categoryId: { sessionId: id, categoryId: p.categoryId } },
+        update: { price: new Prisma.Decimal(p.price) },
+        create: { sessionId: id, categoryId: p.categoryId, price: new Prisma.Decimal(p.price) },
+      });
+    }
+    return this.getOne(id);
+  }
+
   /**
    * Отмена сеанса с автоматическим возвратом всех проданных билетов (ТЗ 3.3).
    * Освобождает места и шлёт обновления на дисплей.

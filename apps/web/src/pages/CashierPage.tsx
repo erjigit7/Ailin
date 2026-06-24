@@ -8,8 +8,9 @@ import BarTab from './tabs/BarTab';
 import ReturnTab from './tabs/ReturnTab';
 import ShiftTab from './tabs/ShiftTab';
 import BookingTab from './tabs/BookingTab';
+import TrampolineTab from './tabs/TrampolineTab';
 
-type Tab = 'tickets' | 'bar' | 'booking' | 'return' | 'shift';
+type Tab = 'tickets' | 'bar' | 'trampoline' | 'booking' | 'return' | 'shift';
 
 export default function CashierPage() {
   const { t, i18n } = useTranslation();
@@ -29,6 +30,7 @@ export default function CashierPage() {
   const tabs: { key: Tab; label: string }[] = [
     { key: 'tickets', label: t('tickets') },
     { key: 'bar', label: t('bar') },
+    { key: 'trampoline', label: t('trampoline') },
     { key: 'booking', label: t('booking') },
     { key: 'return', label: t('return') },
     { key: 'shift', label: t('shiftReport') },
@@ -90,6 +92,7 @@ export default function CashierPage() {
         <TicketsTab disabled={noShift} sessionId={ticketSessionId} onSessionChange={changeTicketSession} />
       )}
       {tab === 'bar' && <BarTab disabled={noShift} />}
+      {tab === 'trampoline' && <TrampolineTab disabled={noShift} />}
       {tab === 'return' && <ReturnTab disabled={noShift} />}
       {tab === 'shift' && <ShiftTab />}
       {tab === 'booking' && <BookingTab />}

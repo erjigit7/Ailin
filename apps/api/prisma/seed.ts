@@ -159,7 +159,27 @@ async function main() {
     }
   }
 
-  console.log('Сиды загружены: зал на 49 мест, фильм, 2 сеанса, бар, пользователи (admin/admin, kassir/cashier).');
+  // ─── Батут: тарифы по возрасту (настраиваются админом) ───
+  const tariffCount = await prisma.trampolineTariff.count();
+  if (tariffCount === 0) {
+    const tariffs = [
+      { name: 'До 5 лет', price: 100, durationMin: 30, sortOrder: 1 },
+      { name: '5–12 лет', price: 150, durationMin: 30, sortOrder: 2 },
+      { name: 'Взрослый', price: 200, durationMin: 30, sortOrder: 3 },
+    ];
+    for (const t of tariffs) {
+      await prisma.trampolineTariff.create({
+        data: {
+          name: t.name,
+          price: new Prisma.Decimal(t.price),
+          durationMin: t.durationMin,
+          sortOrder: t.sortOrder,
+        },
+      });
+    }
+  }
+
+  console.log('Сиды загружены: зал на 49 мест, фильм, 2 сеанса, бар, батут, пользователи (admin/admin, kassir/cashier).');
 }
 
 main()
