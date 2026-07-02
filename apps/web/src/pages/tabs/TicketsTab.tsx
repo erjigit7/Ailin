@@ -13,6 +13,10 @@ interface SelectedSeat {
   held: boolean;
 }
 
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export default function TicketsTab({
   disabled,
   sessionId,
@@ -24,11 +28,21 @@ export default function TicketsTab({
 }) {
   const { t } = useTranslation();
 
-  const { data: sessions } = useQuery({ queryKey: ['sessions'], queryFn: () => getSessions() });
+  // По умолчанию показываем сеансы только на сегодня; фильтр даты — для поиска по дням.
+  const [date, setDate] = useState(todayStr());
+  const { data: sessions } = useQuery({ queryKey: ['sessions', date], queryFn: () => getSessions(date) });
   const activeSession: SessionListItem | undefined = useMemo(
     () => sessions?.find((s) => s.id === sessionId) ?? sessions?.[0],
     [sessions, sessionId],
   );
+
+  // Если сеанс выбранного дня не входит в новый список (сменили дату) — переключаемся
+  // на первый сеанс этого дня, чтобы не остаться на «чужом» sessionId.
+  useEffect(() => {
+    if (sessions && sessions.length > 0 && !sessions.find((s) => s.id === sessionId)) {
+      onSessionChange(sessions[0].id);
+    }
+  }, [sessions]); // eslint-disable-line
 
   const seatsMap = useSeatRealtime(activeSession?.id);
   const seats = useMemo(() => Object.values(seatsMap), [seatsMap]);
@@ -127,10 +141,30 @@ export default function TicketsTab({
 
   return (
     <>
-      {/* Селектор сеанса */}
-      <div className="px-6 py-3">
+      {/* Фильтр по дате + селектор сеанса */}
+      <div className="px-6 py-3 flex gap-3">
+        <input
+          type="date"
+          value={date}
+          onChange={(e) => {
+            releaseAllHolds();
+            setDate(e.target.value);
+            setSelected([]);
+          }}
+          className="bg-gray-800 rounded px-4 py-3 text-sm shrink-0"
+        />
+        <button
+          onClick={() => {
+            releaseAllHolds();
+            setDate(todayStr());
+            setSelected([]);
+          }}
+          className="px-3 py-2 rounded text-xs bg-gray-700 hover:bg-gray-600 shrink-0"
+        >
+          Сегодня
+        </button>
         <select
-          className="w-full bg-gray-800 rounded px-4 py-3 text-sm"
+          className="flex-1 bg-gray-800 rounded px-4 py-3 text-sm"
           value={activeSession?.id ?? ''}
           onChange={(e) => {
             releaseAllHolds();
@@ -138,6 +172,7 @@ export default function TicketsTab({
             setSelected([]);
           }}
         >
+          {sessions?.length === 0 && <option value="">Сеансов на эту дату нет</option>}
           {sessions?.map((s) => (
             <option key={s.id} value={s.id}>
               {s.movie.title} ·{' '}
