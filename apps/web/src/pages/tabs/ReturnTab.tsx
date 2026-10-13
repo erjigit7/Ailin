@@ -3,9 +3,15 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { findTicket, returnTicket, getSessions, type FoundTicket } from '../../lib/api';
 
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export default function ReturnTab({ disabled }: { disabled?: boolean }) {
   const { t } = useTranslation();
-  const { data: sessions } = useQuery({ queryKey: ['sessions'], queryFn: () => getSessions() });
+  // Показываем только сеансы выбранного дня (по умолчанию — сегодня).
+  const [date, setDate] = useState(todayStr());
+  const { data: sessions } = useQuery({ queryKey: ['sessions', date], queryFn: () => getSessions(date) });
 
   const [mode, setMode] = useState<'qr' | 'seat'>('seat');
   const [qr, setQr] = useState('');
@@ -23,7 +29,7 @@ export default function ReturnTab({ disabled }: { disabled?: boolean }) {
       const found =
         mode === 'qr'
           ? await findTicket({ qr })
-          : await findTicket({ sessionId: sessionId || sessions?.[0]?.id, row: Number(row), number: Number(number) });
+          : await findTicket({ sessionId: sessions?.some((s) => s.id === sessionId) ? sessionId : sessions?.[0]?.id, row: Number(row), number: Number(number) });
       setTicket(found);
     } catch (e: any) {
       setMsg(e?.response?.data?.message ?? 'Билет не найден');
@@ -73,7 +79,29 @@ export default function ReturnTab({ disabled }: { disabled?: boolean }) {
         />
       ) : (
         <div className="grid grid-cols-3 gap-3 mb-3">
+          <div className="col-span-3 flex gap-2">
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => {
+                setDate(e.target.value);
+                setSessionId('');
+              }}
+              className="bg-gray-800 rounded px-3 py-2 text-sm shrink-0"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setDate(todayStr());
+                setSessionId('');
+              }}
+              className="px-3 py-2 rounded text-xs bg-gray-700 hover:bg-gray-600 shrink-0"
+            >
+              Сегодня
+            </button>
+          </div>
           <select value={sessionId} onChange={(e) => setSessionId(e.target.value)} className="bg-gray-800 rounded px-3 py-2 col-span-3">
+            {sessions?.length === 0 && <option value="">Сеансов на эту дату нет</option>}
             {sessions?.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.movie.title} · {new Date(s.startsAt).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
