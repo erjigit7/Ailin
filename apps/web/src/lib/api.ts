@@ -249,8 +249,15 @@ export const updateSessionPrices = (id: string, prices: { categoryId: string; pr
   api.put(`/sessions/${id}/prices`, { prices }).then((r) => r.data);
 
 // ─── Админка: отчёты ───
+export interface TicketCategoryStat {
+  code: string;
+  name: string;
+  count: number;
+  sum: number;
+}
 export interface Revenue {
   tickets: number;
+  ticketsByCategory: TicketCategoryStat[];
   bar: number;
   trampoline: number;
   total: number;

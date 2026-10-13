@@ -36,22 +36,37 @@ export class ReportsService {
   }
 
   async revenue(from?: string, to?: string) {
-    const orders = await this.prisma.order.findMany({
-      where: this.periodWhere(from, to),
-      include: { tickets: true, barItems: true, trampolineItems: true },
-    });
+    const [orders, categories] = await Promise.all([
+      this.prisma.order.findMany({
+        where: this.periodWhere(from, to),
+        include: { tickets: true, barItems: true, trampolineItems: true },
+      }),
+      this.prisma.ticketCategory.findMany({ orderBy: { createdAt: 'asc' } }),
+    ]);
+    // Проданные (не возвращённые) билеты по категориям: взрослые / детские / льготные.
+    const byCat = new Map(
+      categories.map((c) => [c.id, { code: c.code, name: c.name, count: 0, sum: 0 }]),
+    );
     let tickets = 0;
     let bar = 0;
     let trampoline = 0;
     const byPayment: Record<string, number> = {};
     for (const o of orders) {
       tickets += o.tickets.reduce((s, x) => s + Number(x.price), 0);
+      for (const t of o.tickets) {
+        if (t.returned) continue;
+        const c = byCat.get(t.categoryId);
+        if (!c) continue;
+        c.count += 1;
+        c.sum += Number(t.price);
+      }
       bar += o.barItems.reduce((s, x) => s + Number(x.price) * Number(x.quantity), 0);
       trampoline += o.trampolineItems.reduce((s, x) => s + Number(x.price) * Number(x.quantity), 0);
       byPayment[o.paymentMethod] = (byPayment[o.paymentMethod] || 0) + Number(o.total);
     }
     return {
       tickets,
+      ticketsByCategory: [...byCat.values()],
       bar,
       trampoline,
       total: tickets + bar + trampoline,
@@ -143,6 +158,21 @@ export class ReportsService {
     );
     rev.getRow(1).font = { bold: true };
 
+    const cat = wb.addWorksheet('Билеты по категориям');
+    cat.columns = [
+      { header: 'Категория', key: 'n', width: 24 },
+      { header: 'Продано, шт', key: 'c', width: 14 },
+      { header: 'Сумма, сом', key: 's', width: 16 },
+    ];
+    revenue.ticketsByCategory.forEach((c) => cat.addRow({ n: c.name, c: c.count, s: c.sum }));
+    cat.addRow({
+      n: 'Итого',
+      c: revenue.ticketsByCategory.reduce((a, c) => a + c.count, 0),
+      s: revenue.ticketsByCategory.reduce((a, c) => a + c.sum, 0),
+    });
+    cat.getRow(1).font = { bold: true };
+    cat.getRow(cat.rowCount).font = { bold: true };
+
     const occ = wb.addWorksheet('Заполняемость');
     occ.columns = [
       { header: 'Сеанс', key: 'm', width: 30 },
@@ -193,6 +223,27 @@ export class ReportsService {
               [{ text: 'Итого', bold: true }, { text: String(revenue.total), bold: true }],
               ['Чеков', String(revenue.ordersCount)],
               ...Object.entries(revenue.byPayment).map(([k, v]) => [`Оплата: ${k}`, String(v)]),
+            ],
+          },
+          layout: 'lightHorizontalLines',
+        },
+
+        { text: 'Проданные билеты', fontSize: 14, bold: true, margin: [0, 16, 0, 4] },
+        {
+          table: {
+            widths: ['*', 'auto', 'auto'],
+            body: [
+              [
+                { text: 'Категория', bold: true },
+                { text: 'Продано, шт', bold: true },
+                { text: 'Сумма, сом', bold: true },
+              ],
+              ...revenue.ticketsByCategory.map((c) => [c.name, String(c.count), String(c.sum)]),
+              [
+                { text: 'Итого', bold: true },
+                { text: String(revenue.ticketsByCategory.reduce((a, c) => a + c.count, 0)), bold: true },
+                { text: String(revenue.ticketsByCategory.reduce((a, c) => a + c.sum, 0)), bold: true },
+              ],
             ],
           },
           layout: 'lightHorizontalLines',

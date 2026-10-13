@@ -65,6 +65,35 @@ export default function ReportsPage() {
         )}
       </section>
 
+      {/* Проданные билеты по категориям */}
+      <section className="mb-8">
+        <h2 className="text-sm uppercase tracking-wider text-gray-400 mb-3">Проданные билеты</h2>
+        <div className="grid grid-cols-4 gap-4">
+          {revenue.data?.ticketsByCategory.map((c) => (
+            <div key={c.code} className="bg-gray-800 rounded-lg p-4">
+              <div className="text-xs text-gray-400">{c.name}</div>
+              <div className="mt-1 text-2xl font-bold">
+                {c.count}
+                <span className="text-sm text-gray-500 ml-1">шт</span>
+              </div>
+              <div className="text-xs text-gray-500 mt-1">{c.sum} сом</div>
+            </div>
+          ))}
+          {revenue.data && (
+            <div className="bg-gray-800 rounded-lg p-4">
+              <div className="text-xs text-gray-400">Всего</div>
+              <div className="mt-1 text-2xl font-bold text-green-400">
+                {revenue.data.ticketsByCategory.reduce((a, c) => a + c.count, 0)}
+                <span className="text-sm text-gray-500 ml-1">шт</span>
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                {revenue.data.ticketsByCategory.reduce((a, c) => a + c.sum, 0)} сом
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
       {/* Заполняемость */}
       <section className="mb-8">
         <h2 className="text-sm uppercase tracking-wider text-gray-400 mb-3">Заполняемость зала (на {from})</h2>
