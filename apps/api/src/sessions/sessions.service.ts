@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { SeatStatus } from '@ailin/shared';
-import { mapMovieOut } from '../common/format';
+import { mapMovieOut, localDayRange } from '../common/format';
 
 interface CreateSessionInput {
   movieId: string;
@@ -115,10 +115,8 @@ export class SessionsService {
   async list(params: { date?: string; movieId?: string }) {
     const where: any = { status: 'SCHEDULED' };
     if (params.date) {
-      const day = new Date(params.date);
-      const next = new Date(day);
-      next.setDate(day.getDate() + 1);
-      where.startsAt = { gte: day, lt: next };
+      const { start, end } = localDayRange(params.date);
+      where.startsAt = { gte: start, lt: end };
     }
     if (params.movieId) where.movieId = params.movieId;
 

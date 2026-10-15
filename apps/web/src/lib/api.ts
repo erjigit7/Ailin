@@ -258,6 +258,7 @@ export interface TicketCategoryStat {
 export interface Revenue {
   tickets: number;
   ticketsByCategory: TicketCategoryStat[];
+  ticketsReturned: { count: number; sum: number };
   bar: number;
   trampoline: number;
   total: number;

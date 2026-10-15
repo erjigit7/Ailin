@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
 import { PrismaService } from '../prisma/prisma.service';
+import { localDayRange } from '../common/format';
 
 // pdfmake (server-side) + шрифты Roboto с кириллицей из vfs.
 const PdfPrinter = require('pdfmake');
@@ -48,13 +49,18 @@ export class ReportsService {
       categories.map((c) => [c.id, { code: c.code, name: c.name, count: 0, sum: 0 }]),
     );
     let tickets = 0;
+    const returned = { count: 0, sum: 0 };
     let bar = 0;
     let trampoline = 0;
     const byPayment: Record<string, number> = {};
     for (const o of orders) {
       tickets += o.tickets.reduce((s, x) => s + Number(x.price), 0);
       for (const t of o.tickets) {
-        if (t.returned) continue;
+        if (t.returned) {
+          returned.count += 1;
+          returned.sum += Number(t.price);
+          continue;
+        }
         const c = byCat.get(t.categoryId);
         if (!c) continue;
         c.count += 1;
@@ -67,6 +73,8 @@ export class ReportsService {
     return {
       tickets,
       ticketsByCategory: [...byCat.values()],
+      // tickets = проданные по категориям + возвращённые (брутто); возвраты вынесены отдельно, чтобы суммы сходились.
+      ticketsReturned: returned,
       bar,
       trampoline,
       total: tickets + bar + trampoline,
@@ -104,10 +112,8 @@ export class ReportsService {
   async occupancy(date?: string) {
     const where: any = { status: 'SCHEDULED' };
     if (date) {
-      const day = new Date(date);
-      const next = new Date(day);
-      next.setDate(day.getDate() + 1);
-      where.startsAt = { gte: day, lt: next };
+      const { start, end } = localDayRange(date);
+      where.startsAt = { gte: start, lt: end };
     }
     const sessions = await this.prisma.session.findMany({
       where,
@@ -165,10 +171,11 @@ export class ReportsService {
       { header: 'Сумма, сом', key: 's', width: 16 },
     ];
     revenue.ticketsByCategory.forEach((c) => cat.addRow({ n: c.name, c: c.count, s: c.sum }));
+    cat.addRow({ n: 'Возвращено', c: revenue.ticketsReturned.count, s: revenue.ticketsReturned.sum });
     cat.addRow({
       n: 'Итого',
-      c: revenue.ticketsByCategory.reduce((a, c) => a + c.count, 0),
-      s: revenue.ticketsByCategory.reduce((a, c) => a + c.sum, 0),
+      c: revenue.ticketsByCategory.reduce((a, c) => a + c.count, 0) + revenue.ticketsReturned.count,
+      s: revenue.tickets,
     });
     cat.getRow(1).font = { bold: true };
     cat.getRow(cat.rowCount).font = { bold: true };
@@ -239,10 +246,14 @@ export class ReportsService {
                 { text: 'Сумма, сом', bold: true },
               ],
               ...revenue.ticketsByCategory.map((c) => [c.name, String(c.count), String(c.sum)]),
+              ['Возвращено', String(revenue.ticketsReturned.count), String(revenue.ticketsReturned.sum)],
               [
                 { text: 'Итого', bold: true },
-                { text: String(revenue.ticketsByCategory.reduce((a, c) => a + c.count, 0)), bold: true },
-                { text: String(revenue.ticketsByCategory.reduce((a, c) => a + c.sum, 0)), bold: true },
+                {
+                  text: String(revenue.ticketsByCategory.reduce((a, c) => a + c.count, 0) + revenue.ticketsReturned.count),
+                  bold: true,
+                },
+                { text: String(revenue.tickets), bold: true },
               ],
             ],
           },

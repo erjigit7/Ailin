@@ -2,10 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { findTicket, returnTicket, getSessions, type FoundTicket } from '../../lib/api';
-
-function todayStr() {
-  return new Date().toISOString().slice(0, 10);
-}
+import { todayStr } from '../../lib/date';
 
 export default function ReturnTab({ disabled }: { disabled?: boolean }) {
   const { t } = useTranslation();

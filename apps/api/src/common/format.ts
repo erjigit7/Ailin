@@ -22,3 +22,16 @@ export function mapMovieOut<T extends { format: any } | null>(movie: T): T {
   }
   return movie;
 }
+
+/**
+ * Границы календарного дня "YYYY-MM-DD" в локальном времени сервера.
+ * `new Date('YYYY-MM-DD')` даёт полночь по UTC и сдвигает день на часовой пояс
+ * (в UTC+6 «сегодня» начинался бы в 06:00), поэтому разбираем дату вручную.
+ */
+export function localDayRange(dateStr: string): { start: Date; end: Date } {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateStr);
+  const start = m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(dateStr);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 1);
+  return { start, end };
+}

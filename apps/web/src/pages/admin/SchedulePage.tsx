@@ -9,10 +9,7 @@ import {
   updateSessionPrices,
   type SessionListItem,
 } from '../../lib/api';
-
-function todayStr() {
-  return new Date().toISOString().slice(0, 10);
-}
+import { todayStr } from '../../lib/date';
 
 export default function SchedulePage() {
   const qc = useQueryClient();

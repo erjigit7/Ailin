@@ -5,16 +5,13 @@ import { getSessions, sellTickets, type SeatState, type SessionListItem } from '
 import { useSeatRealtime, setDisplaySession, holdSeat } from '../../lib/socket';
 import { printTicketReceipts } from '../../lib/receipt';
 import HallScheme, { Legend } from '../../components/HallScheme';
+import { todayStr } from '../../lib/date';
 
 interface SelectedSeat {
   seat: SeatState;
   categoryId: string;
   /** место было свободным и мы его «удержали» (для брони — false, удержание не шлём) */
   held: boolean;
-}
-
-function todayStr() {
-  return new Date().toISOString().slice(0, 10);
 }
 
 export default function TicketsTab({

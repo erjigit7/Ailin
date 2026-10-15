@@ -1,20 +1,19 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getRevenue, getOccupancy, getTopProducts, downloadReport } from '../../lib/api';
-
-function todayStr() {
-  return new Date().toISOString().slice(0, 10);
-}
+import { todayStr } from '../../lib/date';
 
 export default function ReportsPage() {
   const [from, setFrom] = useState(todayStr());
   const [to, setTo] = useState(todayStr());
   // to-конец дня
   const toEnd = `${to}T23:59:59`;
+  // from-начало дня по локальному времени (голая дата сервером читается как UTC)
+  const fromStart = `${from}T00:00:00`;
 
-  const revenue = useQuery({ queryKey: ['revenue', from, to], queryFn: () => getRevenue(from, toEnd) });
+  const revenue = useQuery({ queryKey: ['revenue', from, to], queryFn: () => getRevenue(fromStart, toEnd) });
   const occupancy = useQuery({ queryKey: ['occupancy', from], queryFn: () => getOccupancy(from) });
-  const top = useQuery({ queryKey: ['top', from, to], queryFn: () => getTopProducts(from, toEnd) });
+  const top = useQuery({ queryKey: ['top', from, to], queryFn: () => getTopProducts(fromStart, toEnd) });
 
   return (
     <div className="p-6">
@@ -29,13 +28,13 @@ export default function ReportsPage() {
         </label>
         <div className="ml-auto flex gap-2">
           <button
-            onClick={() => downloadReport('excel', { from, to: toEnd, date: from })}
+            onClick={() => downloadReport('excel', { from: fromStart, to: toEnd, date: from })}
             className="px-3 py-1.5 rounded bg-green-700 hover:bg-green-600 text-white text-xs font-medium"
           >
             ⤓ Excel
           </button>
           <button
-            onClick={() => downloadReport('pdf', { from, to: toEnd, date: from })}
+            onClick={() => downloadReport('pdf', { from: fromStart, to: toEnd, date: from })}
             className="px-3 py-1.5 rounded bg-red-700 hover:bg-red-600 text-white text-xs font-medium"
           >
             ⤓ PDF
@@ -68,7 +67,7 @@ export default function ReportsPage() {
       {/* Проданные билеты по категориям */}
       <section className="mb-8">
         <h2 className="text-sm uppercase tracking-wider text-gray-400 mb-3">Проданные билеты</h2>
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-5 gap-4">
           {revenue.data?.ticketsByCategory.map((c) => (
             <div key={c.code} className="bg-gray-800 rounded-lg p-4">
               <div className="text-xs text-gray-400">{c.name}</div>
@@ -81,14 +80,22 @@ export default function ReportsPage() {
           ))}
           {revenue.data && (
             <div className="bg-gray-800 rounded-lg p-4">
-              <div className="text-xs text-gray-400">Всего</div>
-              <div className="mt-1 text-2xl font-bold text-green-400">
-                {revenue.data.ticketsByCategory.reduce((a, c) => a + c.count, 0)}
+              <div className="text-xs text-gray-400">Возвращено</div>
+              <div className="mt-1 text-2xl font-bold text-amber-400">
+                {revenue.data.ticketsReturned.count}
                 <span className="text-sm text-gray-500 ml-1">шт</span>
               </div>
-              <div className="text-xs text-gray-500 mt-1">
-                {revenue.data.ticketsByCategory.reduce((a, c) => a + c.sum, 0)} сом
+              <div className="text-xs text-gray-500 mt-1">{revenue.data.ticketsReturned.sum} сом</div>
+            </div>
+          )}
+          {revenue.data && (
+            <div className="bg-gray-800 rounded-lg p-4">
+              <div className="text-xs text-gray-400">Всего (с возвратами)</div>
+              <div className="mt-1 text-2xl font-bold text-green-400">
+                {revenue.data.ticketsByCategory.reduce((a, c) => a + c.count, 0) + revenue.data.ticketsReturned.count}
+                <span className="text-sm text-gray-500 ml-1">шт</span>
               </div>
+              <div className="text-xs text-gray-500 mt-1">{revenue.data.tickets} сом</div>
             </div>
           )}
         </div>
